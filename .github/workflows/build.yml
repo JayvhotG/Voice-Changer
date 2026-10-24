@@ -1,0 +1,21 @@
+name: build-libvoicefx
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch RubberBand 4.0.0 (GPL-2.0+, not stored in this repo)
+        run: |
+          mkdir -p jni/rubberband-src
+          curl -L https://codeload.github.com/breakfastquay/rubberband/tar.gz/refs/tags/v4.0.0 | tar xz --strip-components=1 -C jni/rubberband-src
+      - name: ndk-build (armeabi-v7a, the only ABI Nezuko ships)
+        run: |
+          $ANDROID_NDK_HOME/ndk-build NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=jni/Android.mk NDK_APPLICATION_MK=jni/Application.mk -j2
+          file libs/armeabi-v7a/libvoicefx.so
+          readelf -d libs/armeabi-v7a/libvoicefx.so | grep NEEDED
+          nm -D --defined-only libs/armeabi-v7a/libvoicefx.so | grep -E '__GetModInfo|OnModLoad|OnModPreLoad|vc_api|vfx_'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libvoicefx
+          path: libs/armeabi-v7a/libvoicefx.so
